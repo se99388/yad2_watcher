@@ -239,9 +239,12 @@ def load_state(path: Path) -> dict[str, str] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def save_state(path: Path, state: dict[str, str], keep_days: int = 60) -> None:
+def save_state(path: Path, state: dict[str, str], keep: set[str] = frozenset(),
+               keep_days: int = 60) -> None:
+    """Value = when the watcher first saw the listing. Drop entries older than
+    keep_days, but never ones still on yad2 (keep), so they aren't re-sent."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=keep_days)).isoformat()
-    state = {k: v for k, v in state.items() if v >= cutoff}
+    state = {k: v for k, v in state.items() if v >= cutoff or k in keep}
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
     tmp.replace(path)
@@ -329,7 +332,7 @@ def run_once(dry_run: bool) -> None:
 
     # only mark as seen after the message went out, so failures retry next hour
     state.update({c["token"]: now for c in new})
-    save_state(state_path, state)
+    save_state(state_path, state, keep=set(current))
 
 
 def main() -> None:

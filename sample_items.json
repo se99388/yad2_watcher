@@ -1,0 +1,232 @@
+[
+ {
+  "token": "ge8piltf",
+  "orderId": 57469425,
+  "adType": "commercial",
+  "categoryId": 1,
+  "subcategoryId": 21,
+  "priority": 1,
+  "price": 97000,
+  "address": {
+   "area": {
+    "id": 11,
+    "text": "אזור חולון ובת ים"
+   }
+  },
+  "metaData": {
+   "coverImage": "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010607_20260906110400.jpeg",
+   "images": [
+    "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010607_20260906110400.jpeg",
+    "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010487_20260906110357.jpeg",
+    "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010896_20260906110357.jpeg",
+    "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010245_20260906110358.jpeg",
+    "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010672_20260906110358.jpeg",
+    "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010077_20260906110355.jpeg",
+    "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010047_20260906110359.jpeg",
+    "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010500_20260906110405.jpeg",
+    "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010940_20260906110359.jpeg",
+    "https://images.yad2.co.il/Pic/202609/06/1_8/o/y2_1pa_010490_20260906110400.jpeg"
+   ]
+  },
+  "commitment": [
+   "אחריות מהיבואן (60 חודשים)",
+   "אספקה מיידית",
+   "אפשרויות מימון",
+   "חבילת הטבות",
+   "טסט לשנה",
+   "טרייד אין עתידי"
+  ],
+  "commitmentInfo": {
+   "insurances": [
+    {
+     "title": "אחריות מהיבואן",
+     "period": 60
+    }
+   ],
+   "services": [
+    "אספקה מיידית",
+    "אפשרויות מימון",
+    "חבילת הטבות",
+    "טסט לשנה",
+    "טרייד אין עתידי"
+   ]
+  },
+  "packages": {
+   "isTradeInButton": true
+  },
+  "customer": {
+   "id": 7985298,
+   "agencyName": "מיקה מוטורס"
+  },
+  "manufacturer": {
+   "id": 177,
+   "text": "ג׳ילי"
+  },
+  "model": {
+   "id": 13054,
+   "text": "Geometry C"
+  },
+  "subModel": {
+   "id": 133801,
+   "text": "Pro 480 חשמלי אוט׳ (204 כ״ס)"
+  },
+  "vehicleDates": {
+   "yearOfProduction": 2023
+  },
+  "engineType": {
+   "id": 6103,
+   "text": "חשמלי"
+  },
+  "hand": {
+   "id": 2,
+   "text": "יד שניה"
+  },
+  "createdAt": "2026-09-06T11:04:19"
+ },
+ {
+  "token": "o2t3eu4n",
+  "orderId": 57449394,
+  "adType": "commercial",
+  "categoryId": 1,
+  "subcategoryId": 21,
+  "priority": 1,
+  "price": 95000,
+  "address": {
+   "area": {
+    "id": 3,
+    "text": "אזור רמת גן וגבעתיים"
+   }
+  },
+  "metaData": {
+   "coverImage": "https://images.yad2.co.il/Pic/202609/01/1_8/o/y2_1pa_010937_20260901125041.jpeg",
+   "images": [
+    "https://images.yad2.co.il/Pic/202609/01/1_8/o/y2_1pa_010937_20260901125041.jpeg",
+    "https://images.yad2.co.il/Pic/202609/01/1_8/o/y2_1pa_010555_20260901125041.jpeg",
+    "https://images.yad2.co.il/Pic/202609/01/1_8/o/y2_1pa_010447_20260901125041.jpeg",
+    "https://images.yad2.co.il/Pic/202609/01/1_8/o/y2_1pa_010048_20260901125041.jpeg",
+    "https://images.yad2.co.il/Pic/202609/01/1_8/o/y2_1pa_010621_20260901125043.jpeg"
+   ]
+  },
+  "packages": {
+   "isTradeInButton": true
+  },
+  "customer": {
+   "id": 7955575,
+   "agencyName": "Brilliant motorclub"
+  },
+  "manufacturer": {
+   "id": 177,
+   "text": "ג׳ילי"
+  },
+  "model": {
+   "id": 13054,
+   "text": "Geometry C"
+  },
+  "subModel": {
+   "id": 133801,
+   "text": "Pro 480 חשמלי אוט׳ (204 כ״ס)"
+  },
+  "vehicleDates": {
+   "yearOfProduction": 2023
+  },
+  "engineType": {
+   "id": 6103,
+   "text": "חשמלי"
+  },
+  "hand": {
+   "id": 1,
+   "text": "יד ראשונה"
+  },
+  "createdAt": "2026-09-01T12:50:53"
+ },
+ {
+  "token": "w1j4w8w0",
+  "orderId": 57589783,
+  "adType": "commercial",
+  "categoryId": 1,
+  "subcategoryId": 21,
+  "priority": 2,
+  "price": 100000,
+  "address": {
+   "area": {
+    "id": 9,
+    "text": "אזור ראשון לציון והסביבה"
+   }
+  },
+  "metaData": {
+   "coverImage": "https://images.yad2.co.il/Pic/202610/07/1_8/o/y2_1pa_010904_20261007173555.jpeg",
+   "images": [
+    "https://images.yad2.co.il/Pic/202610/07/1_8/o/y2_1pa_010904_20261007173555.jpeg",
+    "https://images.yad2.co.il/Pic/202610/07/1_8/o/y2_1pa_010822_20261007173552.jpeg",
+    "https://images.yad2.co.il/Pic/202610/07/1_8/o/y2_1pa_010184_20261007173556.jpeg",
+    "https://images.yad2.co.il/Pic/202610/07/1_8/o/y2_1pa_010049_20261007173554.jpeg",
+    "https://images.yad2.co.il/Pic/202610/07/1_8/o/y2_1pa_010264_20261007173552.jpeg",
+    "https://images.yad2.co.il/Pic/202610/07/1_8/o/y2_1pa_010523_20261007173551.jpeg",
+    "https://images.yad2.co.il/Pic/202610/07/1_8/o/y2_1pa_010097_20261007173600.jpeg",
+    "https://images.yad2.co.il/Pic/202610/07/1_8/o/y2_1pa_010226_20261007173557.jpeg"
+   ]
+  },
+  "commitment": [
+   "בדיקה מלאה",
+   "תיקון ליקויים לאחר בדיקה",
+   "אספקה מיידית",
+   "אפשרויות מימון",
+   "טרייד אין עתידי"
+  ],
+  "commitmentInfo": {
+   "maintenances": [
+    "בדיקה מלאה",
+    "תיקון ליקויים לאחר בדיקה"
+   ],
+   "services": [
+    "אספקה מיידית",
+    "אפשרויות מימון",
+    "טרייד אין עתידי"
+   ]
+  },
+  "tags": [
+   {
+    "name": "בקרת שמירת מרחק",
+    "id": 613,
+    "priority": 1
+   },
+   {
+    "name": "בקרת שיוט אדפטיבית",
+    "id": 614,
+    "priority": 1
+   }
+  ],
+  "packages": {
+   "isTradeInButton": true
+  },
+  "customer": {
+   "id": 4692296,
+   "agencyName": "אוטו שי",
+   "agencyLogo": "//images.yad2.co.il/Pic/TradeMiniSite/logo100_3_1_35440_20180614090641-l.jpg?t=1791410382257"
+  },
+  "manufacturer": {
+   "id": 177,
+   "text": "ג׳ילי"
+  },
+  "model": {
+   "id": 13054,
+   "text": "Geometry C"
+  },
+  "subModel": {
+   "id": 133801,
+   "text": "Pro 480 חשמלי אוט׳ (204 כ״ס)"
+  },
+  "vehicleDates": {
+   "yearOfProduction": 2024
+  },
+  "engineType": {
+   "id": 6103,
+   "text": "חשמלי"
+  },
+  "hand": {
+   "id": 1,
+   "text": "יד ראשונה"
+  },
+  "createdAt": "2026-10-07T17:36:31"
+ }
+]

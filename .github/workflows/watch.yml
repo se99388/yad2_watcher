@@ -15,7 +15,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
 
@@ -24,10 +24,9 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install dependencies + headless Chromium
-        run: |
-          pip install -r requirements.txt playwright
-          python -m playwright install --with-deps chromium
+      - name: Install dependencies
+        timeout-minutes: 3
+        run: pip install -r requirements.txt playwright
 
       - name: Check Yad2 and send new listings to Telegram
         env:
@@ -37,7 +36,9 @@ jobs:
           STATE_FILE: seen.json
           DEBUG_DIR: debug
           USE_BROWSER: "1"
+          BROWSER_CHANNEL: chrome   # use the runner's preinstalled Google Chrome
           MAX_PAGES: "1"
+        timeout-minutes: 6
         run: python yad2_watcher.py
 
       - name: Save seen listings

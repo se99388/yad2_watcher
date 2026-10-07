@@ -106,7 +106,8 @@ def _browser_ctx():
         from playwright.sync_api import sync_playwright
         _pw = sync_playwright().start()
         browser = _pw.chromium.launch(
-            headless=True, args=["--disable-blink-features=AutomationControlled"])
+            headless=True, channel=os.environ.get("BROWSER_CHANNEL") or None,
+            args=["--disable-blink-features=AutomationControlled"])
         _ctx = browser.new_context(
             user_agent=HEADERS["User-Agent"], locale="he-IL",
             timezone_id="Asia/Jerusalem", viewport={"width": 1366, "height": 900})

@@ -94,6 +94,47 @@ def fetch_html(session: requests.Session, url: str, retries: int = 2) -> str:
     raise BlockedError(f"Could not get listings from {url} (likely bot protection)")
 
 
+# ---------------------------------------------------------------- browser fetch
+_pw = None
+_ctx = None
+
+
+def _browser_ctx():
+    """Lazily start one headless Chromium (passes Radware's JS challenge)."""
+    global _pw, _ctx
+    if _ctx is None:
+        from playwright.sync_api import sync_playwright
+        _pw = sync_playwright().start()
+        browser = _pw.chromium.launch(
+            headless=True, args=["--disable-blink-features=AutomationControlled"])
+        _ctx = browser.new_context(
+            user_agent=HEADERS["User-Agent"], locale="he-IL",
+            timezone_id="Asia/Jerusalem", viewport={"width": 1366, "height": 900})
+        _ctx.add_init_script(
+            "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+    return _ctx
+
+
+def fetch_html_browser(url: str) -> str:
+    page = _browser_ctx().new_page()
+    try:
+        page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        try:
+            page.wait_for_selector("script#__NEXT_DATA__", state="attached", timeout=45000)
+        except Exception:
+            pass
+        html = page.content()
+    finally:
+        page.close()
+    if "__NEXT_DATA__" not in html:
+        if os.environ.get("DEBUG_DIR"):
+            d = Path(os.environ["DEBUG_DIR"]); d.mkdir(parents=True, exist_ok=True)
+            (d / "last_response.html").write_text(html[:300000], encoding="utf-8")
+            (d / "last_response.txt").write_text(f"url={url}\nmode=browser\n", encoding="utf-8")
+        raise BlockedError(f"Browser could not get listings from {url} (bot protection)")
+    return html
+
+
 # ---------------------------------------------------------------- parsing
 def _get(d, *path):
     for p in path:
@@ -152,7 +193,10 @@ def normalize(token: str, it: dict) -> dict:
 def search(session: requests.Session, url: str, max_pages: int) -> dict[str, dict]:
     results: dict[str, dict] = {}
     for page in range(1, max_pages + 1):
-        items = extract_items(fetch_html(session, with_page(url, page)))
+        page_url = with_page(url, page)
+        html = (fetch_html_browser(page_url) if os.environ.get("USE_BROWSER") == "1"
+                else fetch_html(session, page_url))
+        items = extract_items(html)
         new_on_page = {k: v for k, v in items.items() if k not in results}
         if not new_on_page:
             break

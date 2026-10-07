@@ -24,7 +24,10 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - run: pip install -r requirements.txt
+      - name: Install dependencies + headless Chromium
+        run: |
+          pip install -r requirements.txt playwright
+          python -m playwright install --with-deps chromium
 
       - name: Check Yad2 and send new listings to Telegram
         env:
@@ -33,6 +36,7 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           STATE_FILE: seen.json
           DEBUG_DIR: debug
+          USE_BROWSER: "1"
         run: python yad2_watcher.py
 
       - name: Save seen listings

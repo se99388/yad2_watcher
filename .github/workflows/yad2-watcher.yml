@@ -28,7 +28,7 @@ jobs:
 
       - name: Check Yad2 and send new listings to Telegram
         env:
-          YAD2_SEARCH_URLS: ${{ secrets.YAD2_SEARCH_URLS }}
+          YAD2_SEARCH_URLS: "https://www.yad2.co.il/vehicles/cars?manufacturer=177&model=13054&subModel=133802,133801,131407,128530,128987,128531,128948,128528,128947&year=2023--1&price=-1-100000&km=-1-70000&priceOnly=1&imgOnly=1"
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           STATE_FILE: seen.json

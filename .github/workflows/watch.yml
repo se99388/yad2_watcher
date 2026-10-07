@@ -1,4 +1,4 @@
-name: Yad2 watcher
+name: Yad2 watch
 
 on:
   schedule:

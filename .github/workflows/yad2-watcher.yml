@@ -2,7 +2,7 @@ name: Yad2 watcher
 
 on:
   schedule:
-    - cron: "23 * * * *"   # every hour (UTC), at :23
+    - cron: "*/5 * * * *"   # TEST: every 5 minutes
   workflow_dispatch:        # "Run workflow" button for manual runs
 
 permissions:

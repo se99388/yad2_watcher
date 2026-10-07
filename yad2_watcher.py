@@ -351,11 +351,25 @@ def main() -> None:
         return
 
     if not args.loop:
+        streak_path = Path(cfg("BLOCK_STREAK_FILE", "block_streak.txt"))
+        alert_after = int(cfg("BLOCK_ALERT_AFTER", "6"))
         try:
             run_once(args.dry_run)
         except BlockedError as e:
-            log.error(str(e))
-            sys.exit(2)
+            # A blocked check is skipped, not failed: the next run catches up,
+            # because new listings are compared against seen.json.
+            streak = (int(streak_path.read_text()) if streak_path.exists() else 0) + 1
+            streak_path.write_text(str(streak))
+            log.warning("%s - skipped (blocked %d run(s) in a row)", e, streak)
+            if streak == alert_after:
+                try:
+                    send_message(f"⚠️ יד2 חוסם את הבדיקה כבר {streak} פעמים ברצף. "
+                                 "ייתכן שצריך לבדוק את המעקב.")
+                except Exception:
+                    log.exception("Could not send block alert")
+            return
+        if streak_path.exists():
+            streak_path.unlink()
         return
 
     interval = int(cfg("CHECK_INTERVAL_MIN", "60")) * 60

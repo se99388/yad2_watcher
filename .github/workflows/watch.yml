@@ -34,7 +34,6 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           STATE_FILE: seen.json
-          DEBUG_DIR: debug
           USE_BROWSER: "1"
           BROWSER_CHANNEL: chrome   # use the runner's preinstalled Google Chrome
           MAX_PAGES: "1"
@@ -44,10 +43,10 @@ jobs:
       - name: Save seen listings
         if: always()
         run: |
-          if [ -n "$(git status --porcelain seen.json debug 2>/dev/null)" ]; then
+          if [ -n "$(git status --porcelain seen.json block_streak.txt 2>/dev/null)" ]; then
             git config user.name "yad2-watcher"
             git config user.email "yad2-watcher@users.noreply.github.com"
-            for f in seen.json debug; do [ -e "$f" ] && git add "$f"; done
+            git add -A seen.json block_streak.txt 2>/dev/null || true
             git commit -m "Update seen listings"
             git pull --rebase -q origin "${GITHUB_REF_NAME}" && git push
           fi

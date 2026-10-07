@@ -81,8 +81,14 @@ def fetch_html(session: requests.Session, url: str, retries: int = 2) -> str:
             return text
         low = text.lower()
         blocked = resp.status_code in (403, 429) or "captcha" in low or "shieldsquare" in low
-        log.warning("Fetch attempt %d failed (status=%s, blocked=%s)",
-                    attempt + 1, resp.status_code, blocked)
+        log.warning("Fetch attempt %d failed (status=%s, blocked=%s, len=%d)",
+                    attempt + 1, resp.status_code, blocked, len(text))
+        if os.environ.get("DEBUG_DIR"):
+            d = Path(os.environ["DEBUG_DIR"]); d.mkdir(parents=True, exist_ok=True)
+            (d / "last_response.html").write_text(text[:300000], encoding="utf-8")
+            (d / "last_response.txt").write_text(
+                f"url={url}\nstatus={resp.status_code}\nheaders={dict(resp.headers)}\n",
+                encoding="utf-8")
         if attempt < retries:
             time.sleep(15 * (attempt + 1) + random.uniform(0, 10))
     raise BlockedError(f"Could not get listings from {url} (likely bot protection)")

@@ -32,15 +32,16 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           STATE_FILE: seen.json
+          DEBUG_DIR: debug
         run: python yad2_watcher.py
 
       - name: Save seen listings
         if: always()
         run: |
-          if [ -f seen.json ] && [ -n "$(git status --porcelain seen.json)" ]; then
+          if [ -n "$(git status --porcelain seen.json debug 2>/dev/null)" ]; then
             git config user.name "yad2-watcher"
             git config user.email "yad2-watcher@users.noreply.github.com"
-            git add seen.json
+            git add seen.json debug 2>/dev/null || true
             git commit -m "Update seen listings"
             git push
           fi

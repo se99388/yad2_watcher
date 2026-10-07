@@ -185,10 +185,18 @@ def extract_items(page_html: str) -> dict[str, dict]:
                 walk(v)
 
     walk(data)
-    if os.environ.get("DUMP_SAMPLE") and found:
-        Path("sample_items.json").write_text(
-            json.dumps(list(found.values())[:3], ensure_ascii=False, indent=1), encoding="utf-8")
     return found
+
+
+def format_published(created_at) -> str | None:
+    """yad2 'createdAt' is Israel local time, e.g. '2026-10-07T17:36:31'."""
+    if not isinstance(created_at, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(created_at[:19])
+    except ValueError:
+        return None
+    return dt.strftime("%d/%m/%Y %H:%M")
 
 
 def normalize(token: str, it: dict) -> dict:
@@ -210,6 +218,7 @@ def normalize(token: str, it: dict) -> dict:
         "area": _get(it, "address", "area", "text") or _get(it, "address", "city", "text"),
         "image": _get(it, "metaData", "coverImage"),
         "url": ITEM_URL.format(token=token),
+        "published": format_published(it.get("createdAt")),
     }
 
 
@@ -261,7 +270,9 @@ def format_listing(c: dict) -> str:
         f'יד {c["hand"]}' if c["hand"] else None,
         c["area"],
     ) if x)
-    return f"🚗 <b>{html_lib.escape(c['title'])}</b>\n💰 {c['price']}\n{html_lib.escape(details)}\n{c['url']}"
+    published = f"\n🕒 פורסם: {c['published']}" if c.get("published") else ""
+    return (f"🚗 <b>{html_lib.escape(c['title'])}</b>\n💰 {c['price']}\n"
+            f"{html_lib.escape(details)}{published}\n{c['url']}")
 
 
 def tg_api(method: str, **params) -> dict:

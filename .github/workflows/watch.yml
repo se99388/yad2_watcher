@@ -35,7 +35,6 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           STATE_FILE: seen.json
           USE_BROWSER: "1"
-          DUMP_SAMPLE: "1"
           BROWSER_CHANNEL: chrome   # use the runner's preinstalled Google Chrome
           MAX_PAGES: "1"
         timeout-minutes: 6
@@ -44,10 +43,10 @@ jobs:
       - name: Save seen listings
         if: always()
         run: |
-          if [ -n "$(git status --porcelain seen.json block_streak.txt sample_items.json 2>/dev/null)" ]; then
+          if [ -n "$(git status --porcelain seen.json block_streak.txt 2>/dev/null)" ]; then
             git config user.name "yad2-watcher"
             git config user.email "yad2-watcher@users.noreply.github.com"
-            for f in seen.json block_streak.txt sample_items.json; do
+            for f in seen.json block_streak.txt; do
               if [ -e "$f" ] || git ls-files --error-unmatch "$f" >/dev/null 2>&1; then git add -A "$f"; fi
             done
             git commit -m "Update seen listings"

@@ -37,6 +37,7 @@ jobs:
           STATE_FILE: seen.json
           DEBUG_DIR: debug
           USE_BROWSER: "1"
+          MAX_PAGES: "1"
         run: python yad2_watcher.py
 
       - name: Save seen listings

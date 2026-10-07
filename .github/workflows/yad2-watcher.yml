@@ -13,7 +13,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # DRY TEST: scheduled runs only log a heartbeat, no yad2 request.
+  heartbeat:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Scheduled run OK at $(TZ=Asia/Jerusalem date '+%Y-%m-%d %H:%M:%S') Israel time"
+
   check:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -185,6 +185,9 @@ def extract_items(page_html: str) -> dict[str, dict]:
                 walk(v)
 
     walk(data)
+    if os.environ.get("DUMP_SAMPLE") and found:
+        Path("sample_items.json").write_text(
+            json.dumps(list(found.values())[:3], ensure_ascii=False, indent=1), encoding="utf-8")
     return found
 
 

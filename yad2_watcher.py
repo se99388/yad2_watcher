@@ -194,9 +194,16 @@ def search(session: requests.Session, url: str, max_pages: int) -> dict[str, dic
     results: dict[str, dict] = {}
     for page in range(1, max_pages + 1):
         page_url = with_page(url, page)
-        html = (fetch_html_browser(page_url) if os.environ.get("USE_BROWSER") == "1"
-                else fetch_html(session, page_url))
+        try:
+            html = (fetch_html_browser(page_url) if os.environ.get("USE_BROWSER") == "1"
+                    else fetch_html(session, page_url))
+        except BlockedError:
+            if page == 1:
+                raise
+            log.warning("Page %d blocked; using the %d listings already found", page, len(results))
+            break
         items = extract_items(html)
+        log.info("Page %d: %d listings", page, len(items))
         new_on_page = {k: v for k, v in items.items() if k not in results}
         if not new_on_page:
             break

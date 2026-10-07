@@ -115,7 +115,26 @@ def _browser_ctx():
     return _ctx
 
 
-def fetch_html_browser(url: str) -> str:
+def fetch_html_browser(url: str, retries: int = 1) -> str:
+    """Load url in Chromium; on a captcha, restart the browser and retry."""
+    global _pw, _ctx
+    for attempt in range(retries + 1):
+        try:
+            return _fetch_html_browser_once(url)
+        except BlockedError:
+            if attempt >= retries:
+                raise
+            log.warning("Captcha on attempt %d, restarting browser and retrying", attempt + 1)
+            try:
+                _ctx.browser.close(); _pw.stop()
+            except Exception:
+                pass
+            _pw = _ctx = None
+            time.sleep(random.uniform(20, 40))
+    raise BlockedError(url)
+
+
+def _fetch_html_browser_once(url: str) -> str:
     page = _browser_ctx().new_page()
     try:
         page.goto(url, wait_until="domcontentloaded", timeout=60000)

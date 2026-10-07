@@ -2,7 +2,7 @@ name: Yad2 watch
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # TEST: every 5 minutes
+    - cron: "*/30 * * * *"  # every 30 minutes
   workflow_dispatch:        # "Run workflow" button for manual runs
 
 permissions:
@@ -13,15 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # DRY TEST: scheduled runs only log a heartbeat, no yad2 request.
-  heartbeat:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Scheduled run OK at $(TZ=Asia/Jerusalem date '+%Y-%m-%d %H:%M:%S') Israel time"
-
   check:
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -56,5 +48,5 @@ jobs:
             git config user.email "yad2-watcher@users.noreply.github.com"
             for f in seen.json debug; do [ -e "$f" ] && git add "$f"; done
             git commit -m "Update seen listings"
-            git push
+            git pull --rebase -q origin "${GITHUB_REF_NAME}" && git push
           fi

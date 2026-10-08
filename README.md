@@ -4,12 +4,13 @@ Checks a Yad2 car search every hour and sends only **new** listings to Telegram.
 
 ## How it works
 - `.github/workflows/watch.yml` runs `yad2_watcher.py` on GitHub Actions.
-  It is triggered hourly by the GitHub schedule and/or an external cron
-  (cron-job.org calling the `workflow_dispatch` API).
+  It is triggered hourly by cron-job.org calling the `workflow_dispatch` API
+  (GitHub's own schedule was too unreliable), or by the "Run workflow" button.
 - The script opens the search in headless Google Chrome, reads the listings from
   the page's `__NEXT_DATA__` JSON and compares them with `seen.json`.
-- New listings are sent to Telegram (title, price, year, km, hand, area, publish time, link).
-- `seen.json` (listing id → when the watcher first saw it) is committed back to the repo.
+- New listings and price drops are sent to Telegram (title, price, year, km, hand, area,
+  publish time, link). Older ads that newly enter the search get a label.
+- `seen.json` (listing id → when first seen + last price) is committed back to the repo.
 
 ## Configuration
 - Search URL: `YAD2_SEARCH_URLS` in `watch.yml` (several: separate with `|`).

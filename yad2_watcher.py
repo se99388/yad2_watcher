@@ -11,7 +11,7 @@ Config comes from environment variables (or a .env file next to the script):
   YAD2_SEARCH_URLS   yad2 search URL(s), several separated by | or spaces
   TG_BOT_TOKEN       Telegram bot token
   TG_CHAT_ID         Telegram chat id
-  STATE_FILE         listings already seen          (default seen.json)
+  STATE_FILE         listings already seen + price  (default seen.json)
   STREAK_FILE        consecutive problem counter    (default problem_streak.json)
   ALERT_AFTER        problems in a row before alert (default 6)
   MAX_PAGES          result pages to read           (default 1)
@@ -28,6 +28,7 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -42,6 +43,8 @@ USER_AGENT = (
     "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 )
 KEEP_DAYS = 60
+OLD_AD_DAYS = 2          # a "new" ad created longer ago than this gets a label
+ISRAEL = ZoneInfo("Asia/Jerusalem")
 
 
 class CheckProblem(Exception):
@@ -172,15 +175,14 @@ def extract_items(page_html: str) -> dict[str, dict]:
     return found
 
 
-def format_published(created_at) -> str | None:
+def parse_created(created_at) -> datetime | None:
     """yad2 'createdAt' is Israel local time, e.g. '2026-10-07T17:36:31'."""
     if not isinstance(created_at, str):
         return None
     try:
-        dt = datetime.fromisoformat(created_at[:19])
+        return datetime.fromisoformat(created_at[:19]).replace(tzinfo=ISRAEL)
     except ValueError:
         return None
-    return dt.strftime("%d/%m/%Y %H:%M")
 
 
 def normalize(token: str, it: dict) -> dict:
@@ -192,16 +194,19 @@ def normalize(token: str, it: dict) -> dict:
         ) if x
     ) or "רכב"
     price = it.get("price")
+    created = parse_created(it.get("createdAt"))
     return {
         "token": token,
         "title": title,
         "year": _get(it, "vehicleDates", "yearOfProduction"),
         "km": it.get("km"),
         "hand": _get(it, "hand", "id") or it.get("hand"),
+        "price_value": price if isinstance(price, (int, float)) else None,
         "price": f"₪{price:,}" if isinstance(price, (int, float)) else "לא צוין",
         "area": _get(it, "address", "area", "text") or _get(it, "address", "city", "text"),
         "url": ITEM_URL.format(token=token),
-        "published": format_published(it.get("createdAt")),
+        "created": created,
+        "published": created.strftime("%d/%m/%Y %H:%M") if created else None,
     }
 
 
@@ -247,11 +252,22 @@ def write_json(path: Path, data) -> None:
     tmp.replace(path)
 
 
-def save_state(path: Path, state: dict[str, str], keep: set[str] = frozenset()) -> None:
-    """Value = when the watcher first saw the listing. Drop entries older than
-    KEEP_DAYS, but never ones still on yad2 (keep), so they aren't re-sent."""
+def load_state(path: Path) -> dict[str, dict] | None:
+    """seen.json: {listing id: {"first_seen": iso time, "price": last price}}.
+    Older files stored only the time; those entries get price None."""
+    raw = load_json(path)
+    if raw is None:
+        return None
+    return {k: (v if isinstance(v, dict) else {"first_seen": v, "price": None})
+            for k, v in raw.items()}
+
+
+def save_state(path: Path, state: dict[str, dict], keep: set[str] = frozenset()) -> None:
+    """Drop entries first seen more than KEEP_DAYS ago, but never ones still on
+    yad2 (keep), so they aren't re-sent."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=KEEP_DAYS)).isoformat()
-    write_json(path, {k: v for k, v in state.items() if v >= cutoff or k in keep})
+    write_json(path, {k: v for k, v in state.items()
+                      if v["first_seen"] >= cutoff or k in keep})
 
 
 # ---------------------------------------------------------------- telegram
@@ -282,7 +298,7 @@ def send_message(text: str) -> None:
            parse_mode="HTML", disable_web_page_preview=False)
 
 
-def format_listing(c: dict) -> str:
+def format_listing(c: dict, old_price: int | None = None) -> str:
     details = " · ".join(str(x) for x in (
         c["year"],
         f'{c["km"]:,} ק"מ' if isinstance(c["km"], int) else None,
@@ -290,8 +306,22 @@ def format_listing(c: dict) -> str:
         c["area"],
     ) if x)
     published = f"\n🕒 פורסם: {c['published']}" if c.get("published") else ""
-    return (f"🚗 <b>{html_lib.escape(c['title'])}</b>\n💰 {c['price']}\n"
+    if old_price is not None:  # price drop on a car already sent
+        head = (f"🔻 <b>ירידת מחיר</b> של ₪{old_price - c['price_value']:,} "
+                f"(היה ₪{old_price:,})\n")
+    else:
+        head = ""
+        age = ad_age_days(c)
+        if age is not None and age >= OLD_AD_DAYS:
+            head = f"📥 מודעה ישנה שנכנסה לחיפוש (פורסמה לפני {age} ימים)\n"
+    return (f"{head}🚗 <b>{html_lib.escape(c['title'])}</b>\n💰 {c['price']}\n"
             f"{html_lib.escape(details)}{published}\n{c['url']}")
+
+
+def ad_age_days(c: dict) -> int | None:
+    if not c.get("created"):
+        return None
+    return (datetime.now(ISRAEL) - c["created"]).days
 
 
 # ---------------------------------------------------------------- main
@@ -309,37 +339,64 @@ def run_once(dry_run: bool) -> None:
         browser.close()
     log.info("Found %d listings in total", len(current))
 
-    state = load_json(state_path)
+    state = load_state(state_path)
     now = datetime.now(timezone.utc).isoformat()
 
     if state is None:  # first run: remember everything, just confirm it works
         if not dry_run:
             send_message(f"✅ מעקב יד2 פעיל. {len(current)} מודעות קיימות נשמרו - "
                          f"תקבל הודעה רק על מודעות חדשות.")
-        save_state(state_path, {t: now for t in current})
+        save_state(state_path, {t: {"first_seen": now, "price": c["price_value"]}
+                                for t, c in current.items()})
         log.info("First run - seeded %d listings", len(current))
         return
 
-    new = [c for t, c in current.items() if t not in state]
-    if not new:
-        log.info("No new listings")
+    new, drops, changed = [], [], False
+    for t, c in current.items():
+        if t not in state:
+            new.append(c)
+            continue
+        old = state[t]["price"]
+        cur = c["price_value"]
+        if old is not None and cur is not None and cur < old:
+            drops.append((c, old))
+        elif cur is not None and cur != old:
+            state[t]["price"] = cur  # price went up (or wasn't stored yet): just remember
+            changed = True
+
+    if not new and not drops:
+        log.info("No new listings or price drops")
+        if changed:
+            save_state(state_path, state, keep=set(current))
         return
 
     if dry_run:
         for c in new:
-            print(f"{c['title']} | {c['year']} | {c['price']} | {c['published']} | {c['url']}")
+            print(f"NEW  {c['title']} | {c['price']} | {c['published']} | {c['url']}")
+        for c, old in drops:
+            print(f"DROP {c['title']} | ₪{old:,} -> {c['price']} | {c['url']}")
         return
 
-    send_message(f"<b>{len(new)} מודעות חדשות ביד2</b>")
+    parts = []
+    if new:
+        parts.append(f"🚗 {len(new)} מודעות חדשות")
+    if drops:
+        parts.append(f"🔻 {len(drops)} ירידות מחיר")
+    send_message("<b>יד2: " + " · ".join(parts) + "</b>")
     try:
+        # Each car is marked right after its own message, so a Telegram failure
+        # midway never causes duplicates on the next run.
         for c in new:  # one message per car -> link preview with photo
             send_message(format_listing(c))
-            state[c["token"]] = now  # mark each car right after it was sent
+            state[c["token"]] = {"first_seen": now, "price": c["price_value"]}
+            time.sleep(1)
+        for c, old in drops:
+            send_message(format_listing(c, old_price=old))
+            state[c["token"]]["price"] = c["price_value"]
             time.sleep(1)
     finally:
-        # Saved even if Telegram fails midway, so sent cars are never re-sent.
         save_state(state_path, state, keep=set(current))
-    log.info("Sent %d new listings to Telegram", len(new))
+    log.info("Sent %d new listings and %d price drops", len(new), len(drops))
 
 
 def track_problems(problem: CheckProblem | None) -> None:

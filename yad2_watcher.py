@@ -14,6 +14,8 @@ Config comes from environment variables (or a .env file next to the script):
   STATE_FILE         listings already seen + price  (default seen.json)
   STREAK_FILE        consecutive problem counter    (default problem_streak.json)
   ALERT_AFTER        problems in a row before alert (default 6)
+  STATS_FILE         counters for the daily summary (default daily_stats.json)
+  SUMMARY_HOUR       Israel hour after which the daily summary is sent (default 20)
   MAX_PAGES          result pages to read           (default 1)
   BROWSER_CHANNEL    e.g. "chrome" to use an installed Google Chrome
 """
@@ -325,7 +327,8 @@ def ad_age_days(c: dict) -> int | None:
 
 
 # ---------------------------------------------------------------- main
-def run_once(dry_run: bool) -> None:
+def run_once(dry_run: bool) -> tuple[int, int, int]:
+    """One check. Returns (new listings, price drops, listings on yad2)."""
     urls = [u for u in re.split(r"[\s|]+", cfg("YAD2_SEARCH_URLS")) if u]
     state_path = Path(cfg("STATE_FILE", "seen.json"))
     max_pages = int(cfg("MAX_PAGES", "1"))
@@ -349,7 +352,7 @@ def run_once(dry_run: bool) -> None:
         save_state(state_path, {t: {"first_seen": now, "price": c["price_value"]}
                                 for t, c in current.items()})
         log.info("First run - seeded %d listings", len(current))
-        return
+        return 0, 0, len(current)
 
     new, drops, changed = [], [], False
     for t, c in current.items():
@@ -368,14 +371,14 @@ def run_once(dry_run: bool) -> None:
         log.info("No new listings or price drops")
         if changed:
             save_state(state_path, state, keep=set(current))
-        return
+        return 0, 0, len(current)
 
     if dry_run:
         for c in new:
             print(f"NEW  {c['title']} | {c['price']} | {c['published']} | {c['url']}")
         for c, old in drops:
             print(f"DROP {c['title']} | ₪{old:,} -> {c['price']} | {c['url']}")
-        return
+        return len(new), len(drops), len(current)
 
     parts = []
     if new:
@@ -397,6 +400,7 @@ def run_once(dry_run: bool) -> None:
     finally:
         save_state(state_path, state, keep=set(current))
     log.info("Sent %d new listings and %d price drops", len(new), len(drops))
+    return len(new), len(drops), len(current)
 
 
 def track_problems(problem: CheckProblem | None) -> None:
@@ -422,6 +426,44 @@ def track_problems(problem: CheckProblem | None) -> None:
         log.exception("Could not send problem alert")
 
 
+def daily_summary(result: tuple[int, int, int] | None, dry_run: bool) -> None:
+    """Count every check and, once a day after SUMMARY_HOUR (Israel time), send a
+    short "still running" summary of everything since the previous summary."""
+    path = Path(cfg("STATS_FILE", "daily_stats.json"))
+    st = load_json(path) or {"checks": 0, "blocked": 0, "new": 0, "drops": 0}
+    st["checks"] += 1
+    if result is None:
+        st["blocked"] += 1
+    else:
+        st["new"] += result[0]
+        st["drops"] += result[1]
+        st["tracked"] = result[2]
+
+    now = datetime.now(ISRAEL)
+    today = now.date().isoformat()
+    if dry_run or now.hour < int(cfg("SUMMARY_HOUR", "20")) or st.get("last_summary") == today:
+        write_json(path, st)
+        return
+
+    ok = st["checks"] - st["blocked"]
+    icon = "✅" if ok else "⚠️"
+    lines = [f"{icon} <b>יד2: סיכום יומי</b>",
+             f"בדיקות: {st['checks']} ({ok} הצליחו, {st['blocked']} נחסמו)",
+             f"מודעות חדשות: {st['new']} · ירידות מחיר: {st['drops']}"]
+    if st.get("tracked") is not None:
+        lines.append(f"מודעות בחיפוש כרגע: {st['tracked']}")
+    if not ok:
+        lines.append("כל הבדיקות נחסמו - המעקב ינסה שוב בשעה הבאה.")
+    try:
+        send_message("\n".join(lines))
+    except Exception:
+        log.exception("Could not send daily summary")
+        write_json(path, st)  # keep counting, try again next run
+        return
+    write_json(path, {"checks": 0, "blocked": 0, "new": 0, "drops": 0,
+                      "tracked": st.get("tracked"), "last_summary": today})
+
+
 def main() -> None:
     load_dotenv(Path(__file__).with_name(".env"))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -436,12 +478,14 @@ def main() -> None:
         return
 
     try:
-        run_once(args.dry_run)
+        result = run_once(args.dry_run)
     except CheckProblem as e:
         # A skipped check loses nothing: the next run compares against seen.json.
         track_problems(e)
+        daily_summary(None, args.dry_run)
         return
     track_problems(None)
+    daily_summary(result, args.dry_run)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,8 @@
 {
- "checks": 3,
- "blocked": 1,
+ "checks": 0,
+ "blocked": 0,
  "new": 0,
  "drops": 0,
- "tracked": 22
+ "tracked": 22,
+ "last_summary": "2026-10-31"
 }

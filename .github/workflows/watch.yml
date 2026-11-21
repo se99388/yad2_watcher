@@ -54,10 +54,16 @@ jobs:
             echo "::warning::Phone exit node is offline - checking over GitHub's network"
             exit 0
           fi
+          before=$(curl -sS -m 15 https://api.ipify.org || true)
           sudo tailscale set --exit-node="$EXIT_NODE"
           # Verify the route works (no IP is printed: the repo and its logs are public)
           if curl -sS -m 20 -o /dev/null https://www.yad2.co.il/robots.txt; then
-            echo "Routing through the phone"
+            after=$(curl -sS -m 15 https://api.ipify.org || true)
+            org=$(curl -sS -m 15 https://ipinfo.io/org || true)
+            [ -n "$after" ] && [ "$after" != "$before" ] && changed=yes || changed=no
+            echo "$org" | grep -qiE "microsoft|azure|github" && dc=yes || dc=no
+            echo "Routing through the phone (public IP changed: $changed, still a datacenter IP: $dc)"
+            echo "::notice::Exit node check - IP changed: $changed, datacenter IP: $dc"
           else
             echo "::warning::Exit node not reachable - checking over GitHub's network"
             sudo tailscale set --exit-node=

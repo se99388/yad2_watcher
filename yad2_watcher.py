@@ -18,6 +18,7 @@ Config comes from environment variables (or a .env file next to the script):
   SUMMARY_HOUR       Israel hour after which the daily summary is sent (default 20)
   MAX_PAGES          result pages to read           (default 1)
   BROWSER_CHANNEL    e.g. "chrome" to use an installed Google Chrome
+  USER_AGENT         optional UA override (default: let Chrome send its own)
 """
 import argparse
 import html as html_lib
@@ -40,10 +41,23 @@ ITEM_URL = "https://www.yad2.co.il/vehicles/item/{token}"
 NEXT_DATA_RE = re.compile(
     r'<script[^>]*\bid="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S
 )
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-)
+# Patches applied to every page before it runs: hide the automation tells
+# (webdriver flag, empty plugin list, SwiftShader WebGL renderer) that bot
+# protection looks for. The UA is NOT overridden by default - see _context().
+STEALTH_JS = """
+Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+Object.defineProperty(navigator, 'languages', {get: () => ['he-IL','he','en-US','en']});
+Object.defineProperty(navigator, 'plugins', {get: () => [1,2,3,4,5]});
+window.chrome = window.chrome || { runtime: {} };
+try {
+  const gp = WebGLRenderingContext.prototype.getParameter;
+  WebGLRenderingContext.prototype.getParameter = function(p){
+    if (p === 37445) return 'Intel Inc.';
+    if (p === 37446) return 'Intel Iris OpenGL Engine';
+    return gp.call(this, p);
+  };
+} catch (e) {}
+"""
 KEEP_DAYS = 60
 OLD_AD_DAYS = 2          # a "new" ad created longer ago than this gets a label
 ISRAEL = ZoneInfo("Asia/Jerusalem")
@@ -95,15 +109,35 @@ class Browser:
             browser = self._pw.chromium.launch(
                 headless=True,
                 channel=os.environ.get("BROWSER_CHANNEL") or None,
-                args=["--disable-blink-features=AutomationControlled"],
+                args=[
+                    "--headless=new",  # new headless: UA has no "HeadlessChrome" tell
+                    "--disable-blink-features=AutomationControlled",
+                    "--lang=he-IL",
+                ],
             )
-            self._ctx = browser.new_context(
-                user_agent=USER_AGENT, locale="he-IL", timezone_id="Asia/Jerusalem",
-                viewport={"width": 1366, "height": 900},
-            )
-            self._ctx.add_init_script(
-                "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+            ctx = dict(locale="he-IL", timezone_id="Asia/Jerusalem",
+                       viewport={"width": 1366, "height": 900})
+            ua = os.environ.get("USER_AGENT")   # unset by default: let real Chrome
+            if ua:                              # send its own UA + matching client
+                ctx["user_agent"] = ua          # hints; a mismatch is a bot signal
+            self._ctx = browser.new_context(**ctx)
+            self._ctx.add_init_script(STEALTH_JS)
+            self._warm_up()
         return self._ctx
+
+    def _warm_up(self) -> None:
+        """Hit the homepage first so Radware's JS challenge runs and stores its
+        clearance cookie on the context before we request a deep search URL."""
+        try:
+            page = self._ctx.new_page()
+            try:
+                page.goto("https://www.yad2.co.il/",
+                          wait_until="domcontentloaded", timeout=60000)
+                page.wait_for_timeout(int(random.uniform(2500, 4500)))
+            finally:
+                page.close()
+        except Exception as e:
+            log.warning("Warm-up navigation failed: %s", e)
 
     def close(self) -> None:
         try:
@@ -202,7 +236,7 @@ def normalize(token: str, it: dict) -> dict:
         "title": title,
         "year": _get(it, "vehicleDates", "yearOfProduction"),
         "km": it.get("km"),
-        "hand": _get(it, "hand", "id") or it.get("hand"),
+        "hand": _get(it, "hand", "text") or _get(it, "hand", "id"),
         "price_value": price if isinstance(price, (int, float)) else None,
         "price": f"₪{price:,}" if isinstance(price, (int, float)) else "לא צוין",
         "area": _get(it, "address", "area", "text") or _get(it, "address", "city", "text"),
@@ -413,7 +447,11 @@ def track_problems(problem: CheckProblem | None) -> None:
     streak = (load_json(path) or {}).get("count", 0) + 1
     write_json(path, {"count": streak, "last": type(problem).__name__})
     log.warning("%s - skipped (%d problem run(s) in a row)", problem, streak)
-    if streak != int(cfg("ALERT_AFTER", "6")):
+    alert_after = int(cfg("ALERT_AFTER", "6"))
+    # Alert at the threshold, then again every ALERT_AFTER runs while it stays
+    # broken - so a persistent block keeps reminding you instead of going silent
+    # after one message (the old "!=" fired exactly once, ever).
+    if streak < alert_after or (streak - alert_after) % alert_after != 0:
         return
     if isinstance(problem, EmptyResultError):
         text = (f"⚠️ יד2 נטען אבל לא נמצאו מודעות {streak} פעמים ברצף. "

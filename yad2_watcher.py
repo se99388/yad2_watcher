@@ -19,6 +19,8 @@ Config comes from environment variables (or a .env file next to the script):
   MAX_PAGES          result pages to read           (default 1)
   BROWSER_CHANNEL    e.g. "chrome" to use an installed Google Chrome
   USER_AGENT         optional UA override (default: let Chrome send its own)
+  HEADLESS           "0" to run a real (headful) window - needs a display
+                     (e.g. xvfb-run on CI). Default "1" = headless.
 """
 import argparse
 import html as html_lib
@@ -106,14 +108,14 @@ class Browser:
         if self._ctx is None:
             from playwright.sync_api import sync_playwright
             self._pw = sync_playwright().start()
+            headless = os.environ.get("HEADLESS", "1") != "0"
+            args = ["--disable-blink-features=AutomationControlled", "--lang=he-IL"]
+            if headless:
+                args.insert(0, "--headless=new")  # new headless: no "HeadlessChrome" tell
             browser = self._pw.chromium.launch(
-                headless=True,
+                headless=headless,
                 channel=os.environ.get("BROWSER_CHANNEL") or None,
-                args=[
-                    "--headless=new",  # new headless: UA has no "HeadlessChrome" tell
-                    "--disable-blink-features=AutomationControlled",
-                    "--lang=he-IL",
-                ],
+                args=args,
             )
             ctx = dict(locale="he-IL", timezone_id="Asia/Jerusalem",
                        viewport={"width": 1366, "height": 900})

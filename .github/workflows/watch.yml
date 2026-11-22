@@ -15,7 +15,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
 
@@ -28,47 +28,6 @@ jobs:
         timeout-minutes: 3
         run: pip install -r requirements.txt
 
-      # Send the yad2 check out through Ofir's phone (Tailscale exit node), so
-      # yad2 sees a normal home/mobile connection instead of a datacenter.
-      # If anything here fails, the check still runs over GitHub's own network.
-      - name: Connect to Tailscale
-        id: tailscale
-        continue-on-error: true
-        timeout-minutes: 3
-        uses: tailscale/github-action@v4
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:ci
-
-      - name: Route internet through the phone
-        if: steps.tailscale.outcome == 'success'
-        continue-on-error: true
-        timeout-minutes: 2
-        env:
-          EXIT_NODE: ofir--a56
-        run: |
-          online=$(tailscale status --json | jq -r --arg n "$EXIT_NODE" \
-            '[(.Peer // {})[] | select(.HostName == $n or (.DNSName | startswith($n + ".")))][0].Online // false')
-          if [ "$online" != "true" ]; then
-            echo "::warning::Phone exit node is offline - checking over GitHub's network"
-            exit 0
-          fi
-          before=$(curl -sS -m 15 https://api.ipify.org || true)
-          sudo tailscale set --exit-node="$EXIT_NODE"
-          # Verify the route works (no IP is printed: the repo and its logs are public)
-          if curl -sS -m 20 -o /dev/null https://www.yad2.co.il/robots.txt; then
-            after=$(curl -sS -m 15 https://api.ipify.org || true)
-            org=$(curl -sS -m 15 https://ipinfo.io/org || true)
-            [ -n "$after" ] && [ "$after" != "$before" ] && changed=yes || changed=no
-            echo "$org" | grep -qiE "microsoft|azure|github" && dc=yes || dc=no
-            echo "Routing through the phone (public IP changed: $changed, still a datacenter IP: $dc)"
-            echo "::notice::Exit node check - IP changed: $changed, datacenter IP: $dc"
-          else
-            echo "::warning::Exit node not reachable - checking over GitHub's network"
-            sudo tailscale set --exit-node=
-          fi
-
       - name: Check Yad2 and send new listings to Telegram
         env:
           YAD2_SEARCH_URLS: "https://www.yad2.co.il/vehicles/cars?manufacturer=177&model=13054&subModel=133802,133801,131407,128530,128987,128531,128948,128528,128947&year=2023--1&price=-1-100000&km=-1-70000&priceOnly=1&imgOnly=1"
@@ -78,11 +37,6 @@ jobs:
           BROWSER_CHANNEL: chrome   # use the runner's preinstalled Google Chrome
         timeout-minutes: 6
         run: python yad2_watcher.py
-
-      - name: Stop routing through the phone
-        if: always() && steps.tailscale.outcome == 'success'
-        continue-on-error: true
-        run: sudo tailscale set --exit-node=
 
       - name: Save seen listings
         if: always()

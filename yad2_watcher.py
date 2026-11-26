@@ -233,12 +233,16 @@ def normalize(token: str, it: dict) -> dict:
     ) or "רכב"
     price = it.get("price")
     created = parse_created(it.get("createdAt"))
+    hid = _get(it, "hand", "id")
+    # "text" is already a full label ("יד ראשונה"), so it is shown as-is;
+    # fall back to "יד <n>" only when no text is present.
+    hand = _get(it, "hand", "text") or (f"יד {hid}" if hid else None)
     return {
         "token": token,
         "title": title,
         "year": _get(it, "vehicleDates", "yearOfProduction"),
         "km": it.get("km"),
-        "hand": _get(it, "hand", "text") or _get(it, "hand", "id"),
+        "hand": hand,
         "price_value": price if isinstance(price, (int, float)) else None,
         "price": f"₪{price:,}" if isinstance(price, (int, float)) else "לא צוין",
         "area": _get(it, "address", "area", "text") or _get(it, "address", "city", "text"),
@@ -340,7 +344,7 @@ def format_listing(c: dict, old_price: int | None = None) -> str:
     details = " · ".join(str(x) for x in (
         c["year"],
         f'{c["km"]:,} ק"מ' if isinstance(c["km"], int) else None,
-        f'יד {c["hand"]}' if c["hand"] else None,
+        c["hand"],
         c["area"],
     ) if x)
     published = f"\n🕒 פורסם: {c['published']}" if c.get("published") else ""

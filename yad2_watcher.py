@@ -237,10 +237,16 @@ def normalize(token: str, it: dict) -> dict:
     # "text" is already a full label ("יד ראשונה"), so it is shown as-is;
     # fall back to "יד <n>" only when no text is present.
     hand = _get(it, "hand", "text") or (f"יד {hid}" if hid else None)
+    year = _get(it, "vehicleDates", "yearOfProduction")
+    month = _get(it, "vehicleDates", "monthOfProduction", "id")
+    # The feed has no on-road date, only production month/year.
+    production = f"ייצור {month}/{year}" if year and month else (
+        f"ייצור {year}" if year else None)
     return {
         "token": token,
         "title": title,
-        "year": _get(it, "vehicleDates", "yearOfProduction"),
+        "year": year,
+        "production": production,
         "km": it.get("km"),
         "hand": hand,
         "price_value": price if isinstance(price, (int, float)) else None,
@@ -342,7 +348,7 @@ def send_message(text: str) -> None:
 
 def format_listing(c: dict, old_price: int | None = None) -> str:
     details = " · ".join(str(x) for x in (
-        c["year"],
+        c.get("production") or c["year"],
         f'{c["km"]:,} ק"מ' if isinstance(c["km"], int) else None,
         c["hand"],
         c["area"],

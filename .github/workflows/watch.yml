@@ -38,8 +38,9 @@ jobs:
           STATE_FILE: seen.json
           BROWSER_CHANNEL: chrome   # use the runner's preinstalled Google Chrome
           HEADLESS: "0"             # experiment: run a real headful window under Xvfb
+          DEBUG_DUMP: "1"           # TEMP: dump one listing's JSON to discover fields
         timeout-minutes: 6
-        run: xvfb-run -a python yad2_watcher.py
+        run: xvfb-run -a python yad2_watcher.py --dry-run
 
       - name: Save seen listings
         if: always()

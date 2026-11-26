@@ -267,6 +267,10 @@ def search(browser: Browser, url: str, max_pages: int) -> dict[str, dict]:
             break
         items = extract_items(html)
         log.info("Page %d: %d listings", page, len(items))
+        if os.environ.get("DEBUG_DUMP") and items:
+            first = next(iter(items.values()))
+            log.info("DEBUG first item JSON:\n%s",
+                     json.dumps(first, ensure_ascii=False, indent=2))
         if page == 1 and not items:
             raise EmptyResultError(f"Page loaded but no listings found for {url}")
         new_on_page = {k: v for k, v in items.items() if k not in results}
